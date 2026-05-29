@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model State {
+  id    Int    @id @default(autoincrement())
+  name  String
+  rules Rule[]
+}
+
+model Rule {
+  id        Int    @id @default(autoincrement())
+  violation String
+  fine      String
+  stateId   Int
+  state     State  @relation(fields: [stateId], references: [id])
+}
