@@ -6,24 +6,37 @@ import pool from "./db.js";
 import fetch from "node-fetch";
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
+/* ================= GLOBAL CRASH PROTECTION ================= */
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err.message);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("❌ Unhandled Rejection:", err);
+});
 
 /* ================= MIDDLEWARE ================= */
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
-/* ================= ROOT TEST ================= */
+/* ================= ROOT ================= */
 app.get("/", (req, res) => {
   res.send("DriveLegal backend running 🚗");
 });
 
-/* ================= DB TEST ================= */
+/* ================= TEST DB ================= */
 app.get("/test-db", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT COUNT(*) FROM traffic_questions"
+      "SELECT COUNT(*) AS total FROM traffic_questions"
     );
-    res.json(result.rows[0]);
+
+    res.json({
+      success: true,
+      total: Number(result.rows[0].total),
+    });
   } catch (err) {
     console.error("DB Test Error:", err.message);
     res.status(500).json({ error: "DB connection failed" });
@@ -41,7 +54,7 @@ app.get("/violations", async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    console.error("DB Error:", err.message);
+    console.error("Violations Error:", err.message);
     res.status(500).json({ error: "Failed to fetch violations" });
   }
 });
@@ -90,6 +103,7 @@ const getStateFromGPS = async (lat, lon) => {
     const data = await res.json();
     return data.address?.state || null;
   } catch (err) {
+    console.error("GPS Error:", err.message);
     return null;
   }
 };
@@ -113,7 +127,7 @@ const searchTrafficRule = async (message, state) => {
     const result = await pool.query(query, values);
     return result.rows[0] || null;
   } catch (err) {
-    console.error(err.message);
+    console.error("Search Error:", err.message);
     return null;
   }
 };
@@ -165,7 +179,7 @@ Description: ${dbRule.description}
     });
 
   } catch (err) {
-    console.error(err.message);
+    console.error("Chat Error:", err.message);
     res.status(500).json({ reply: "Server error" });
   }
 });
@@ -182,6 +196,7 @@ app.get("/quiz", async (req, res) => {
 
     res.json({ success: true, questions: result.rows });
   } catch (err) {
+    console.error("Quiz Error:", err.message);
     res.status(500).json({ error: "Failed to load quiz" });
   }
 });

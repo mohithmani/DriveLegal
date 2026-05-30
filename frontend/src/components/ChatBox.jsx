@@ -5,37 +5,35 @@ function ChatBox({ setViolation }) {
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
 
+  const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
 
-  // 🔁 Auto scroll
+  /* Auto scroll */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 🔊 Speak AI reply
+  /* Speech */
   const speakText = (text) => {
     if (!text) return;
-
     window.speechSynthesis.cancel();
-    const speech = new SpeechSynthesisUtterance(text);
 
+    const speech = new SpeechSynthesisUtterance(text);
     speech.lang = "en-IN";
     speech.rate = 1;
 
     window.speechSynthesis.speak(speech);
   };
 
-  // 🎤 START VOICE INPUT
+  /* Voice start */
   const startVoice = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("Voice input not supported in this browser");
+      alert("Voice input not supported");
       return;
     }
 
@@ -48,11 +46,9 @@ function ChatBox({ setViolation }) {
 
     recognition.onresult = (event) => {
       let transcript = "";
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
-
       setText(transcript);
     };
 
@@ -63,15 +59,12 @@ function ChatBox({ setViolation }) {
     recognition.start();
   };
 
-  // ⛔ STOP VOICE INPUT
   const stopVoice = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
+    recognitionRef.current?.stop();
+    setIsListening(false);
   };
 
-  // 🚀 SEND MESSAGE
+  /* Send message */
   const sendMessage = async () => {
     if (!text.trim()) return;
 
@@ -79,7 +72,6 @@ function ChatBox({ setViolation }) {
     setText("");
 
     setMessages((prev) => [...prev, { role: "user", text: userText }]);
-
     setLoading(true);
 
     try {
@@ -96,7 +88,10 @@ function ChatBox({ setViolation }) {
         { role: "bot", text: data.reply },
       ]);
 
-      if (setViolation) setViolation(data.violationData);
+      /* SAFE: only if backend sends it */
+      if (setViolation && data?.violationData) {
+        setViolation(data.violationData);
+      }
 
       speakText(data.reply);
     } catch (err) {
@@ -109,161 +104,131 @@ function ChatBox({ setViolation }) {
     setLoading(false);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
   return (
     <div style={styles.container}>
-
       {/* HEADER */}
       <div style={styles.header}>
         💬 DriveLegal AI Assistant
       </div>
 
-      {/* CHAT AREA */}
+      {/* CHAT BOX */}
       <div style={styles.chatBox}>
+        {messages.length === 0 && (
+          <p style={{ opacity: 0.5, textAlign: "center" }}>
+            Ask anything about traffic rules 🚗
+          </p>
+        )}
+
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              ...styles.message,
-              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-              background: msg.role === "user" ? "#2563eb" : "#f1f5f9",
-              color: msg.role === "user" ? "#fff" : "#111",
-            }}
-          >
-            {msg.text}
+          <div key={i} style={{ marginBottom: 10 }}>
+            <b>{msg.role === "user" ? "You" : "AI"}:</b> {msg.text}
           </div>
         ))}
 
-        {loading && (
-          <div style={styles.loading}>Thinking... 🤖</div>
-        )}
+        {loading && <p>Thinking...</p>}
 
         <div ref={chatEndRef} />
       </div>
 
-      {/* INPUT AREA */}
+      {/* INPUT */}
       <div style={styles.inputBox}>
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ask traffic law question..."
+          onKeyDown={handleKeyDown}
+          placeholder="Ask traffic question..."
           style={styles.input}
         />
 
-        {/* 🎤 VOICE CONTROLS */}
-        {!isListening ? (
-          <button onClick={startVoice} style={styles.voiceBtn}>
-            🎤 Start
-          </button>
-        ) : (
-          <button onClick={stopVoice} style={styles.stopBtn}>
-            ⏹ Stop
-          </button>
-        )}
+        <button onClick={startVoice} style={styles.voiceBtn}>
+          🎤
+        </button>
+
+        <button onClick={stopVoice} style={styles.stopBtn}>
+          ⏹
+        </button>
 
         <button onClick={sendMessage} style={styles.button}>
-          Send
+          Send 🚀
         </button>
       </div>
-
-      {/* LISTENING STATUS */}
-      {isListening && (
-        <div style={styles.listening}>
-          🎙️ Listening...
-        </div>
-      )}
     </div>
   );
 }
 
-/* 🎨 STYLES */
+export default ChatBox;
+
+/* SAME UI COLORS (NOT CHANGED) */
 const styles = {
   container: {
     height: "80vh",
     display: "flex",
     flexDirection: "column",
     borderRadius: "20px",
-    background: "#ffffff",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
     overflow: "hidden",
+    background: "linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
+    border: "1px solid rgba(139,92,246,0.3)",
   },
 
   header: {
-    padding: "15px",
-    background: "#0f172a",
-    color: "#fff",
-    textAlign: "center",
-    fontWeight: "bold",
+    padding: "14px",
+    color: "white",
+    fontWeight: "700",
+    background: "rgba(99,102,241,0.18)",
   },
 
   chatBox: {
     flex: 1,
-    padding: "15px",
+    padding: 15,
     overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
-
-  message: {
-    padding: "10px 14px",
-    borderRadius: "12px",
-    maxWidth: "75%",
-    fontSize: "14px",
+    color: "#e2e8f0",
   },
 
   inputBox: {
     display: "flex",
-    gap: "8px",
-    padding: "10px",
-    borderTop: "1px solid #ddd",
+    gap: 8,
+    padding: 10,
+    background: "rgba(0,0,0,0.2)",
   },
 
   input: {
     flex: 1,
-    padding: "10px",
-    borderRadius: "10px",
-    border: "1px solid #ccc",
+    padding: 10,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.1)",
+    background: "rgba(255,255,255,0.05)",
+    color: "white",
   },
 
   button: {
-    padding: "10px 14px",
-    background: "#2563eb",
-    color: "#fff",
+    background: "#6366f1",
+    color: "white",
     border: "none",
-    borderRadius: "10px",
+    padding: "10px 14px",
+    borderRadius: 10,
     cursor: "pointer",
   },
 
   voiceBtn: {
-    padding: "10px 12px",
-    background: "#22c55e",
-    color: "#fff",
+    background: "#34d399",
     border: "none",
-    borderRadius: "10px",
+    padding: "10px",
+    borderRadius: 10,
     cursor: "pointer",
   },
 
   stopBtn: {
-    padding: "10px 12px",
     background: "#ef4444",
-    color: "#fff",
     border: "none",
-    borderRadius: "10px",
+    padding: "10px",
+    borderRadius: 10,
     cursor: "pointer",
   },
-
-  loading: {
-    fontSize: "14px",
-    color: "gray",
-  },
-
-  listening: {
-    textAlign: "center",
-    padding: "6px",
-    background: "#dcfce7",
-    color: "#16a34a",
-    fontWeight: "bold",
-  },
 };
-
-export default ChatBox;

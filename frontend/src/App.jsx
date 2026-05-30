@@ -1,63 +1,79 @@
+import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
+import { supabase } from "./supabaseClient";
 
+/* ================= PAGES ================= */
 import Home from "./pages/Home";
 import MapPage from "./pages/MapPage";
 import ChatPage from "./pages/ChatPage";
 import ViolationsPage from "./pages/ViolationsPage";
 import QuizPage from "./pages/QuizPage";
 import SafetyRoutePage from "./pages/SafetyRoutePage";
+import LoginPage from "./pages/LoginPage"; // ✅ correct ONLY if file is src/LoginPage.jsx
 
+/* ================= APP ================= */
 function App() {
-  return (
-    <Routes>
-      {/* HOME PAGE */}
-      <Route path="/" element={<Home />} />
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-      {/* MAP PAGE */}
-      <Route path="/map" element={<MapPage />} />
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user || null);
+      setLoading(false);
+    };
 
-      {/* CHAT PAGE */}
-      <Route path="/chat" element={<ChatPage />} />
+    getUser();
 
-      {/* VIOLATIONS PAGE */}
-      <Route path="/violations" element={<ViolationsPage />} />
+    const { data: authListener } =
+      supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user || null);
+      });
 
-      {/* QUIZ PAGE */}
-      <Route path="/quiz" element={<QuizPage />} />
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
 
-      {/* SAFETY ROUTE PAGE */}
-      <Route path="/safety-route" element={<SafetyRoutePage />} />
-
-      {/* 404 PAGE */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-}
-
-/* ================= 404 PAGE ================= */
-
-function NotFound() {
-  return (
-    <div style={styles.notFound}>
-      <div>
-        <h1 style={{ fontSize: "60px", marginBottom: "10px" }}>404</h1>
-        <p style={{ fontSize: "18px", color: "#aaa" }}>Page Not Found</p>
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-950 text-white">
+        Loading...
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/violations" element={<ViolationsPage />} />
+
+        <Route
+          path="/quiz"
+          element={user ? <QuizPage /> : <LoginPage />}
+        />
+
+        <Route path="/safety-route" element={<SafetyRoutePage />} />
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </div>
   );
 }
 
-const styles = {
-  notFound: {
-    height: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#0a0c10",
-    color: "#fff",
-    fontFamily: "Arial",
-    textAlign: "center",
-  },
-};
+/* ================= 404 PAGE ================= */
+function NotFound() {
+  return (
+    <div className="h-screen flex flex-col items-center justify-center bg-gray-950 text-white">
+      <h1 className="text-6xl font-bold">404</h1>
+      <p className="text-gray-400 mt-2">Page Not Found</p>
+    </div>
+  );
+}
 
 export default App;
